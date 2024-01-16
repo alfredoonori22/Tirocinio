@@ -18,7 +18,7 @@ do
   do
     for CSC in True False
     do
-      for FAIRFACECLASS in race age #gender
+      for FAIRFACECLASS in race age gender
       do
         for SEED in 1 2 3
         do
@@ -38,8 +38,6 @@ do
               TRAINER.COOP.CSC ${CSC} \
               TRAINER.COOP.CLASS_TOKEN_POSITION ${CTP} \
               DATASET.NUM_SHOTS ${SHOTS}
-              # --fairface-class ${FAIRFACECLASS} \
-              # --num-shots ${SHOTS} \ ""
           fi
         done
       done
