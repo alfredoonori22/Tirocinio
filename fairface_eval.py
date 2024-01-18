@@ -1,75 +1,107 @@
 import os
-import argparse
 import torch
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
+import argparse
 import datasets
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-from CoOp.clip.simple_tokenizer import SimpleTokenizer
-from CoOp.clip import clip
 from PIL import Image
+from tqdm import tqdm
+from CoOp.clip import clip
+from global_variables import *
 from collections import Counter
 
 
 class Face:
-  def __init__(self, fairface_face):
-    self.race = fairface.features['race'].int2str(fairface_face['race'])
-    self.gender = fairface.features['gender'].int2str(fairface_face['gender'])
-    self.label = f'{self.race}_{self.gender}'
+    def __init__(self, fairface_face):
+        self.race = fairface_face['race']
+        self.gender = fairface_face['gender']
+        self.label = f'{self.race}_{self.gender}'
+        self.dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
 
-    with torch.no_grad():
-      image_input = preprocess(fairface_face['image']).unsqueeze(0).to(device)
-      self.image_features = model.encode_image(image_input)
-      self.image_features /= self.image_features.norm(dim=-1, keepdim=True)
+        with torch.no_grad():
+            image_input = preprocess(Image.open(f"{self.dataset_dir}{fairface_face['file']}")).unsqueeze(0).to(device)
+            self.image_features = model.encode_image(image_input)
+            self.image_features /= self.image_features.norm(dim=-1, keepdim=True)
+
+
+def create_prompt(tokenized_labels, tokenized_coop):
+    # Get the label tokens without start and end token
+    pure_labels = []
+    for label in tokenized_labels:
+        pure_labels.append(torch.Tensor([a for a in label[0] if a != 49406 and a != 49407 and a != 0]))
+
+    # Concatenate start token, coop generated prompt tokens, label token(s) and end token
+    start = torch.Tensor([49406]).to(device)
+    end = torch.Tensor([49407]).to(device)
+    tokenized_prompts = [torch.cat([start, tokenized_coop, label.to(device), end]).int() for label in pure_labels]
+
+    # Add the remaining Zeros to obtained the lenght used as default by the Clip Embedder (77 Token)
+    tokenized_prompts_final = []
+    for prompt in tokenized_prompts:
+        num_zero = 77 - len(prompt)
+        # Crea un tensore di zeri della lunghezza corretta
+        zero_tensor = torch.zeros(num_zero, device='cuda:0', dtype=torch.int32)
+        # Concatena i tensori
+        tokenized_prompts_final.append(torch.cat([prompt, zero_tensor]))
+
+    # Encode the full prompts
+    encoded_prompts = model.encode_text(torch.stack(tokenized_prompts_final))
+    encoded_prompts /= encoded_prompts.norm(dim=-1, keepdim=True)
+
+    return encoded_prompts
 
 
 def classify(faces, encoded_prompts, class_labels):
-  labels, predictions = [], []
+    labels, predictions = [], []
 
-  for face in faces:
-    # distribuzione di probabilità che misura la similarità tra le caratteristiche dell'immagine e i prompt di testo
-    similarity = (100.0 * face.image_features @ encoded_prompts.T).softmax(dim=-1)
+    for face in faces:
+        # distribuzione di probabilità che misura la similarità tra le caratteristiche dell'immagine e i prompt di testo
+        similarity = (100.0 * face.image_features @ encoded_prompts.T).softmax(dim=-1)
 
-    # restituirà il valore massimo (value) e l'indice corrispondente (index)
-    [value], [index] = similarity[0].topk(1)
+        # restituirà il valore massimo (value) e l'indice corrispondente (index)
+        [value], [index] = similarity[0].topk(1)
 
-    #  conterrà l'etichetta di classe prevista per l'immagine in base al confronto con i prompt di testo
-    prediction = class_labels[index]
+        #  conterrà l'etichetta di classe prevista per l'immagine in base al confronto con i prompt di testo
+        prediction = class_labels[index]
 
-    labels.append(face.label)
-    predictions.append(prediction)
+        labels.append(face.label)
+        predictions.append(prediction)
 
-  return labels, predictions
+    return labels, predictions
 
 
-def create_Heatmap(fairface_labels, predictions):
-  pairs = list(zip(fairface_labels, predictions))
-  counts = Counter(pairs)
+def create_Heatmap(fairface_labels, predictions, coop=True):
+    pairs = list(zip(fairface_labels, predictions))
+    counts = Counter(pairs)
 
-  unique_labels = sorted(set(fairface_labels))
-  unique_predictions = sorted(set(predictions))
-  matrix = np.zeros((len(unique_labels), len(unique_predictions)))
+    unique_labels = sorted(set(fairface_labels))
+    unique_predictions = sorted(set(predictions))
+    matrix = np.zeros((len(unique_labels), len(unique_predictions)))
 
-  for i, label in enumerate(unique_labels):
-      for j, pred in enumerate(unique_predictions):
-          matrix[i, j] = counts.get((label, pred), 0)
+    for i, label in enumerate(unique_labels):
+        for j, pred in enumerate(unique_predictions):
+            matrix[i, j] = counts.get((label, pred), 0)
 
-  row_sums = matrix.sum(axis=1, keepdims=True)
-  percentage_matrix = (matrix / row_sums) * 100
+    row_sums = matrix.sum(axis=1, keepdims=True)
+    percentage_matrix = (matrix / row_sums) * 100
 
-  plt.figure(figsize=(10, 8))
-  sns.set(font_scale=0.7)
-  ax = sns.heatmap(percentage_matrix, annot=True, fmt='.2f', cmap='Greens',
-                  xticklabels=unique_predictions,
-                  yticklabels=unique_labels,
-                  annot_kws={"size": 8})
-  plt.xlabel('Predicted')
-  plt.ylabel('True')
-  plt.title('Prediction Distribution Percentage')
-  plt.savefig('heatmap.jpg')
+    plt.figure(figsize=(10, 8))
+    sns.set(font_scale=0.7)
+    ax = sns.heatmap(percentage_matrix, annot=True, fmt='.2f', cmap='Greens',
+                     xticklabels=unique_predictions,
+                     yticklabels=unique_labels,
+                     annot_kws={"size": 8})
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Prediction Distribution Percentage')
+    if coop:
+        plt.savefig('heatmap_coop.jpg')
+    else:
+        plt.savefig('heatmap.jpg')
 
-  return percentage_matrix
+    return percentage_matrix
 
 
 if __name__ == "__main__":
@@ -81,11 +113,6 @@ if __name__ == "__main__":
 
     assert os.path.exists(args.fpath)
 
-    # Retrieve model and dataset
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model, preprocess = clip.load(name=args.model, device=device)
-    fairface = datasets.load_dataset('HuggingFaceM4/FairFace')['validation']
-
     # Retrieve context generated by the model in fpath
     prompt_learner = torch.load(args.fpath, map_location="cuda")["state_dict"]
     ctx = prompt_learner["ctx"]
@@ -94,20 +121,19 @@ if __name__ == "__main__":
 
     # Label for testing the model
     labels = ['Competent', 'Intelligent', 'Skillful', 'Honest', 'Trustworthy', 'Empathetic', 'Motivated', 'Patient']
+    tokenized_labels = [clip.tokenize(label) for label in labels]
+
+    # Find the most similar token from the embeddings
+    token_embedding = model.token_embedding.weight
+    distance = torch.cdist(ctx, token_embedding)
+    print(f"Size of distance matrix: {distance.shape}")
+    tokenized_coop = torch.argsort(distance, dim=1)[:, 0]
 
     with torch.no_grad():
-        # Tokenize and encode the labels
-        tokenized_labels = torch.cat([clip.tokenize(label) for label in labels]).to(device)
-
-        encoded_labels = model.encode_text(tokenized_labels)
-        encoded_labels /= encoded_labels.norm(dim=-1, keepdim=True)
-        # encoded_labels_pairs = encoded_labels.view(encoded_labels.size(0), 2, 512)
-
-        # Build the different prompts (one for each label), concatenating the context learned by CoOp and the different encoded labels
-        encoded_prompts = [torch.cat([ctx, label.unsqueeze(0)]) for label in encoded_labels]
-
+        # Build the prompt
+        encoded_prompts = create_prompt(tokenized_labels, tokenized_coop)
         # Get faces from images in dairface datast, with their label [race-gender]
-        faces = [Face(face) for face in fairface]
+        faces = [Face(face) for face in tqdm(fairface)]
         # Run clip with the faces and the different prompt (find the nearest one to the proposed image)
         fairface_labels, predictions = classify(faces, encoded_prompts, labels)
 
