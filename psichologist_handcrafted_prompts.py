@@ -7,7 +7,7 @@ from CoOp import clip
 from tqdm import tqdm
 from global_variables import *
 from matplotlib import pyplot as plt
-from fairface_eval import Face, create_Heatmap
+from psichologist_fairface_prompts import Face, create_Heatmap
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
