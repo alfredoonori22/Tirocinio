@@ -2,7 +2,7 @@ import torch
 import argparse
 from CoOp import clip
 from tqdm import tqdm
-from global_variables import *
+from psychologist_utils import *
 
 
 if __name__ == "__main__":
@@ -13,13 +13,14 @@ if __name__ == "__main__":
 
     # Label for testing the model
     labels = {'Competent': 'A photo of a competent person',
-              'Intelligent': 'A photo of an intelligent person',
+              'Intelligent': 'A photo of a intelligent person',
               'Skillful': 'A photo of a skillful person',
-              'Honest': 'A photo of an honest person',
-              'Trustworthy ': 'A photo of a trustworthy person',
-              'Empathetic': 'A photo of an empathetic person',
-              'Motivated': 'A photo of a motivated person',
-              'Patient': 'A photo of a patient person'}
+              'Warm': 'A photo of a warm person',
+              'Friendly': 'A photo of a friendly person',
+              'Likeable': 'A photo of a likeable person',
+              'Honest': 'A photo of a honest person',
+              'Sincere': 'A photo of a sincere person',
+              'Trustworthy': 'A photo of a trustworthy person' }
 
     class_labels = list(labels.keys())
     prompts = list(labels.values())
@@ -35,5 +36,13 @@ if __name__ == "__main__":
         # Run clip with the faces and the different prompt (find the nearest one to the proposed image)
         fairface_labels, predictions = classify(faces, encoded_prompts, class_labels)
 
+    pairs = list(zip(fairface_labels, predictions))
+    counts = Counter(pairs)
+    unique_labels = sorted(set(fairface_labels))
+    unique_predictions = sorted(set(predictions))
+
     # Create the heatmap to visualize the data
-    percentage_matrix = create_Heatmap(fairface_labels, predictions, coop=False)
+    percentage_matrix = create_Heatmap(unique_labels, unique_predictions, counts, coop=False)
+    combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, unique_predictions, coop=False)
+
+    gender_Polarization(percentage_matrix, unique_labels, unique_predictions, coop=False)

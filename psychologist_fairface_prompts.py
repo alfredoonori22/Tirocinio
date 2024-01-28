@@ -3,13 +3,14 @@ import torch
 import argparse
 from tqdm import tqdm
 from CoOp.clip import clip
-from global_variables import *
+from collections import Counter
+from psychologist_utils import *
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fpath", type=str, default="/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/gender/vit_b32_16shots/nctx16_cscFalse_ctpend/seed3/prompt_learner/model.pth.tar-200", help="Path to the learned prompt")
+    parser.add_argument("--fpath", type=str, default="/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/age/vit_b32_16shots/nctx16_cscFalse_ctpend/seed3/prompt_learner/model.pth.tar-200", help="Path to the learned prompt")
     parser.add_argument("--model", type=str, default="ViT-B/32", help="Baseline model for CLIP")
     args = parser.parse_args()
 
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     print(f"Size of context: {ctx.shape}")
 
     # Label for testing the model
-    labels = ['Competent', 'Intelligent', 'Skillful', 'Honest', 'Trustworthy', 'Empathetic', 'Motivated', 'Patient']
+    labels = ['Competent', 'Intelligent', 'Skillful', 'Warm', 'Friendly', 'Likeable', 'Honest', 'Sincere', 'Trustworthy']
     tokenized_labels = [clip.tokenize(label) for label in labels]
 
     # Find the most similar token from the embeddings
@@ -39,5 +40,14 @@ if __name__ == "__main__":
         # Run clip with the faces and the different prompt (find the nearest one to the proposed image)
         fairface_labels, predictions = classify(faces, encoded_prompts, labels)
 
+    pairs = list(zip(fairface_labels, predictions))
+    counts = Counter(pairs)
+    unique_labels = sorted(set(fairface_labels))
+    unique_predictions = sorted(set(predictions))
+
     # Create the heatmap to visualize the data
-    percentage_matrix = create_Heatmap(fairface_labels, predictions)
+    percentage_matrix = create_Heatmap(unique_labels, unique_predictions, counts)
+    combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, unique_predictions)
+
+    gender_Polarization(percentage_matrix, unique_labels, unique_predictions)
+
