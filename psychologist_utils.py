@@ -9,16 +9,45 @@ from CoOp import clip
 from collections import Counter
 
 class Face:
-    def __init__(self, fairface_face):
-        self.race = fairface_face['race']
-        self.gender = fairface_face['gender']
-        self.label = f'{self.race}_{self.gender}'
-        self.dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
+    def __init__(self, fairface_face, dataset_dir, device, model, preprocess):
+        """
+        Initialize a Face object.
 
-        with torch.no_grad():
-            image_input = preprocess(Image.open(f"{self.dataset_dir}{fairface_face['file']}")).unsqueeze(0).to(device)
-            self.image_features = model.encode_image(image_input)
-            self.image_features /= self.image_features.norm(dim=-1, keepdim=True)
+        Args:
+            fairface_face (dict): A dictionary containing information about the face.
+            dataset_dir (str): The directory of the dataset.
+            device: The device to be used for processing.
+            model: The model used for encoding the image features.
+            preprocess: The preprocessing function for the image.
+        """
+        self.race = fairface_face.get('race')
+        self.gender = fairface_face.get('gender')
+        self.label = f'{self.race}_{self.gender}'
+        self.dataset_dir = dataset_dir
+        self.device = device
+        self.model = model
+        self.preprocess = preprocess
+        self.image_features = self.process_image(fairface_face.get('file'))
+
+    def process_image(self, file):
+        """
+        Process the image and extract image features.
+
+        Args:
+            file (str): The filename of the image.
+
+        Returns:
+            torch.Tensor: The image features.
+        """
+        try:
+            image_input = self.preprocess(Image.open(f"{self.dataset_dir}{file}")).unsqueeze(0).to(self.device)
+            image_features = self.model.encode_image(image_input)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+
+            return image_features
+        except (FileNotFoundError, OSError) as e:
+            print(f"Error opening or accessing image file: {e}")
+            raise e
 
 
 def create_prompt(tokenized_labels, tokenized_coop):
@@ -92,9 +121,11 @@ def create_Heatmap(unique_labels, unique_predictions, counts, coop=True):
     plt.ylabel('True')
     plt.title('Prediction Distribution Percentage')
     if coop:
-        plt.savefig('images/fairface/heatmap_fairface.jpg')
+        print("Saving heatmap in for fairface")
+        # plt.savefig('images/fairface_age/heatmap_fairface.jpg')
     else:
-        plt.savefig('images/handcrafted/heatmap.jpg')
+        print("Saving heatmap for handcrafted")
+        # plt.savefig('images/handcrafted/heatmap.jpg')
 
     return percentage_matrix
 
@@ -116,9 +147,11 @@ def create_Combined_Matrix(percentage_matrix, unique_labels, unique_predictions,
     plt.tight_layout()
 
     if coop:
-        plt.savefig('images/fairface/combmatr_fairface.jpg')
+        print("Saving combined matrix for fairface")
+        # plt.savefig('images/fairface_age/combmatr_fairface.jpg')
     else:
-        plt.savefig('images/handcrafted/combmatr.jpg')
+        print("Saving combined matrix for handcrafted")
+        # plt.savefig('images/handcrafted/combmatr.jpg')
 
     return combined_matrix
 
@@ -172,9 +205,47 @@ def gender_Polarization(percentage_matrix, unique_labels, unique_predictions, co
     plt.tight_layout()
 
     if coop:
-        plt.savefig('images/fairface/genderpol_fairface.jpg')
+        print("Saving gender polarization for fairface")
+        # plt.savefig('images/fairface_age/genderpol_fairface.jpg')
     else:
-        plt.savefig('images/handcrafted/genderpol.jpg')
+        print("Saving gender polarization for handcrafted")
+        # plt.savefig('images/handcrafted/genderpol.jpg')
+
+
+def race_Polarization(percentage_matrix, unique_labels, unique_predictions, coop=True):
+    df = pd.DataFrame(percentage_matrix, index=unique_labels, columns=unique_predictions)
+
+    # Create column per categories
+    df['Competence'] = df[competence_categories].sum(axis=1)
+    df['Warmth'] = df[warmth_categories].sum(axis=1)
+    df['Morality'] = df[morality_categories].sum(axis=1)
+
+    # Remove Female/Male
+    df['Race'] = df.index.str.split('_').str[0]
+    df = df.groupby('Race')[['Competence', 'Warmth', 'Morality']].sum()
+    df = df/6
+    #TODO: Meglio dividere per 6 forse, il Competence di Black è semplicemente la somma dei 6 valori (Competent, Intelligent e Skillfull per Black Male e Black Female)
+
+    # Compute mean
+    category_means = df[['Competence', 'Warmth', 'Morality']].mean()
+
+    # Compute percentage increase/decrease
+    percentage_increase = ((df[['Competence', 'Warmth', 'Morality']] - category_means) / category_means) * 100
+
+    # Barplot
+    plt.figure(figsize=(12, 8))
+    percentage_increase.plot(kind='bar', width=0.8)
+    plt.title('Percentage Difference from Category Mean')
+    plt.ylabel('Percentage Difference')
+    plt.xlabel('Race')
+    plt.xticks(rotation=45, ha='right')
+    plt.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+
+    if coop:
+        plt.savefig('images/fairface_race/racepol_fairface_1.jpg')
+    else:
+        plt.savefig('images/handcrafted/racepol.jpg')
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

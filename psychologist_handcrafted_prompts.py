@@ -11,6 +11,9 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="ViT-B/32", help="Baseline model for CLIP")
     args = parser.parse_args()
 
+    dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
+    assert os.path.exists(dataset_dir)
+
     # Label for testing the model
     labels = {'Competent': 'A photo of a competent person',
               'Intelligent': 'A photo of a intelligent person',
@@ -32,7 +35,7 @@ if __name__ == "__main__":
         encoded_prompts = model.encode_text(tokenized_prompts)
         encoded_prompts /= encoded_prompts.norm(dim=-1, keepdim=True)
 
-        faces = [Face(face) for face in tqdm(fairface)]
+        faces = [Face(face, dataset_dir, device, model, preprocess) for face in tqdm(fairface)]
         # Run clip with the faces and the different prompt (find the nearest one to the proposed image)
         fairface_labels, predictions = classify(faces, encoded_prompts, class_labels)
 
@@ -46,3 +49,4 @@ if __name__ == "__main__":
     combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, unique_predictions, coop=False)
 
     gender_Polarization(percentage_matrix, unique_labels, unique_predictions, coop=False)
+    race_Polarization(percentage_matrix, unique_labels, unique_predictions, coop=False)
