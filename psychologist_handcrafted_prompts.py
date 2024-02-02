@@ -1,3 +1,4 @@
+import os
 import torch
 import argparse
 from CoOp import clip
@@ -9,6 +10,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="ViT-B/32", help="Baseline model for CLIP")
+    parser.add_argument("--category", type=str, default="gender", help="Label category: race/gender/age")
     args = parser.parse_args()
 
     dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
@@ -35,18 +37,16 @@ if __name__ == "__main__":
         encoded_prompts = model.encode_text(tokenized_prompts)
         encoded_prompts /= encoded_prompts.norm(dim=-1, keepdim=True)
 
-        faces = [Face(face, dataset_dir, device, model, preprocess) for face in tqdm(fairface)]
+        faces = [Face(face, args.category, dataset_dir, device, model, preprocess) for face in tqdm(fairface)]
         # Run clip with the faces and the different prompt (find the nearest one to the proposed image)
         fairface_labels, predictions = classify(faces, encoded_prompts, class_labels)
 
     pairs = list(zip(fairface_labels, predictions))
     counts = Counter(pairs)
     unique_labels = sorted(set(fairface_labels))
-    unique_predictions = sorted(set(predictions))
 
     # Create the heatmap to visualize the data
-    percentage_matrix = create_Heatmap(unique_labels, unique_predictions, counts, coop=False)
-    combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, unique_predictions, coop=False)
+    percentage_matrix = create_Heatmap(unique_labels, complete_labels, counts, args.category, coop=False)
+    combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, args.category, coop=False)
 
-    gender_Polarization(percentage_matrix, unique_labels, unique_predictions, coop=False)
-    race_Polarization(percentage_matrix, unique_labels, unique_predictions, coop=False)
+    polarization(percentage_matrix, unique_labels, args.category, coop=False)
