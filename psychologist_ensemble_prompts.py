@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="ViT-B/32", help="Baseline model for CLIP")
-    parser.add_argument("--category", type=str, default="age", help="Label category: race/gender/age")
+    parser.add_argument("--category", type=str, default="gender", help="Label category: race/gender/age")
     args = parser.parse_args()
 
     assert os.path.exists(dataset_dir)
@@ -55,12 +55,12 @@ if __name__ == "__main__":
     for ctx in ctxs:
         prompts.append(torch.cat([prefix, ctx, suffix], dim=1).type(torch.float16))
 
+    text_encoder = TextEncoder(model)
+
     text_features = []
     with torch.no_grad():
-        # Build the final prompts
         for prompt in prompts:
             # Build the text encoder
-            text_encoder = TextEncoder(model)
             text_feature = text_encoder(prompt, tokenized_prompts)
 
             # Normalize the text features

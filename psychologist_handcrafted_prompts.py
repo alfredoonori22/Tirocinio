@@ -36,12 +36,12 @@ if __name__ == "__main__":
 
     # Encode prompt
     with torch.no_grad():
-        encoded_prompts = model.encode_text(tokenized_prompts)
-        encoded_prompts /= encoded_prompts.norm(dim=-1, keepdim=True)
+        text_features = model.encode_text(tokenized_prompts)
+        text_features /= text_features.norm(dim=-1, keepdim=True)
 
         # Classify faces
         faces = [Face(face, args.category, dataset_dir, device, model, preprocess) for face in tqdm(fairface)]
-        fairface_labels, predictions = classify(faces, encoded_prompts, class_labels)
+        fairface_labels, predictions = classify(faces, text_features, class_labels)
 
     # Count and process predictions
     pairs = list(zip(fairface_labels, predictions))

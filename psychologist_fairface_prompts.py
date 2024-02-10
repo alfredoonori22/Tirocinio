@@ -23,9 +23,10 @@ if __name__ == "__main__":
 
     prompts, tokenized_prompts = create_prompt(args.fpath, labels)
 
+    text_encoder = TextEncoder(model)
+
     with torch.no_grad():
         # Build the prompt
-        text_encoder = TextEncoder(model)
         text_features = text_encoder(prompts, tokenized_prompts)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
