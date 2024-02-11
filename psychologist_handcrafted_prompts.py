@@ -49,8 +49,8 @@ if __name__ == "__main__":
     unique_labels = sorted(set(fairface_labels))
 
     # Create heatmap and combined matrix
-    percentage_matrix = create_heatmap(unique_labels, labels, counts, args.category)
-    combined_matrix = create_combined_matrix(percentage_matrix, unique_labels, args.category)
+    percentage_matrix = create_Heatmap(unique_labels, labels, counts, args.category)
+    combined_matrix = create_Combined_matrix(percentage_matrix, unique_labels, args.category)
 
     # Calculate polarization
     polarization(percentage_matrix, unique_labels, args.category)
