@@ -1,3 +1,4 @@
+import os
 import torch
 import datasets
 import numpy as np
@@ -262,5 +263,7 @@ warmth_categories = ['Warm', 'Friendly', 'Likeable']
 morality_categories = ['Honest', 'Sincere', 'Trustworthy']
 
 dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
-fairface = datasets.load_dataset("csv", data_files="/work/tesi_aonori/CoOp_datasets/FairFace/val_labels.csv")['train']
-# fairface = fairface.select(range(1000))
+assert os.path.exists(dataset_dir)
+
+fairface = datasets.load_dataset("csv", data_files=f"{dataset_dir}val_labels.csv")['train']
+fairface = fairface.select(range(1000))

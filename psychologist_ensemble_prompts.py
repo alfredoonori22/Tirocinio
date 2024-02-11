@@ -16,8 +16,6 @@ if __name__ == "__main__":
     parser.add_argument("--category", type=str, default="gender", help="Label category: race/gender/age")
     args = parser.parse_args()
 
-    assert os.path.exists(dataset_dir)
-
     # Retrieve prompts for each class label: age, gender, race
     fpaths = ['/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/age/vit_b32_-1shots/nctx16_cscFalse_ctpend/seed1/prompt_learner/model.pth.tar-200',
               '/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/gender/vit_b32_-1shots/nctx16_cscFalse_ctpend/seed1/prompt_learner/model.pth.tar-200',

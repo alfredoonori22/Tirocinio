@@ -13,8 +13,6 @@ if __name__ == "__main__":
     parser.add_argument("--category", type=str, default="age", help="Label category: race/gender/age")
     args = parser.parse_args()
 
-    assert os.path.exists(dataset_dir)
-
     # Define labels and prompts
     labels = {
         'Competent': 'A photo of a competent person',
@@ -50,7 +48,7 @@ if __name__ == "__main__":
 
     # Create heatmap and combined matrix
     percentage_matrix = create_Heatmap(unique_labels, labels, counts, args.category)
-    combined_matrix = create_Combined_matrix(percentage_matrix, unique_labels, args.category)
+    combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, args.category)
 
     # Calculate polarization
     polarization(percentage_matrix, unique_labels, args.category)

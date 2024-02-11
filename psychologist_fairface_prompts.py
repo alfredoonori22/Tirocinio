@@ -11,17 +11,14 @@ from CoOp.clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fpath", type=str,
-                        default="/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/age/vit_b32_-1shots/nctx16_cscFalse_ctpend/seed1/prompt_learner/model.pth.tar-200",
-                        help="Path to the learned prompt")
     parser.add_argument("--model", type=str, default="ViT-B/32", help="Baseline model for CLIP")
     parser.add_argument("--category", type=str, default="age", help="Label category: race/gender/age")
     args = parser.parse_args()
 
-    assert os.path.exists(dataset_dir)
-    assert os.path.exists(args.fpath)
+    fpath = f"/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/{args.category}/vit_b32_-1shots/nctx16_cscFalse_ctpend/seed1/prompt_learner/model.pth.tar-200"
+    assert os.path.exists(fpath)
 
-    prompts, tokenized_prompts = create_prompt(args.fpath, labels)
+    prompts, tokenized_prompts = create_prompt(fpath, labels)
 
     text_encoder = TextEncoder(model)
 
