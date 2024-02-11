@@ -1,0 +1,6 @@
+[submodule "CoOp"]
+	path = CoOp
+	url = https://github.com/alfredoonori22/CoOp.git
+[submodule "Dassl.pytorch"]
+	path = Dassl.pytorch
+	url = https://github.com/alfredoonori22/Dassl.pytorch.git
