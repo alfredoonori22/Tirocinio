@@ -84,7 +84,7 @@ def create_prompt(fpath, labels):
     prompt_learner = torch.load(fpath, map_location="cuda")["state_dict"]
     ctx = prompt_learner["ctx"].float()
     if ctx.dim() == 2:
-        ctx = ctx.unsqueeze(0).expand(9, -1, -1)
+        ctx = ctx.unsqueeze(0).expand(len(labels), -1, -1)
     print(f"Size of context: {ctx.shape}")
 
     print("Initializing a generic context")
@@ -166,7 +166,7 @@ def calculate_category_percentage(matrix, categories, unique_predictions):
     return matrix[:, category_indices].sum(axis=1)
 
 
-def create_Heatmap(unique_labels, labels, counts, category, coop=False, ensemble=False):
+def create_Heatmap(unique_labels, labels, counts, category, task, coop=False, ensemble=False):
     matrix = np.zeros((len(unique_labels), len(labels)))
 
     for i, label in enumerate(unique_labels):
@@ -184,13 +184,13 @@ def create_Heatmap(unique_labels, labels, counts, category, coop=False, ensemble
                      annot_kws={"size": 8})
     plt.xlabel('Predicted')
     plt.ylabel('True')
-    plt.title('Prediction Distribution Percentage')
+    plt.title(f'Prediction Distribution Percentage for {task} task')
     if coop:
-        plt.savefig(f'images/fairface/{category}/heatmap_fairface.jpg')
+        plt.savefig(f'images/{task}/soft/{category}/heatmap_soft_{task}.jpg')
     elif ensemble:
-        plt.savefig(f'images/ensemble/{category}/heatmap_ensemble.jpg')
+        plt.savefig(f'images/{task}/ensemble/{category}/heatmap_ensemble_{task}.jpg')
     else:
-        plt.savefig(f'images/handcrafted/{category}/heatmap.jpg')
+        plt.savefig(f'images/{task}/handcrafted/{category}/heatmap_{task}.jpg')
 
     return percentage_matrix
 
@@ -212,28 +212,35 @@ def create_Combined_Matrix(percentage_matrix, unique_labels, category, coop=Fals
     plt.tight_layout()
 
     if coop:
-        plt.savefig(f'images/fairface/{category}/combmatr_fairface.jpg')
+        plt.savefig(f'images/psychologist/soft/{category}/combmatr_soft.jpg')
     elif ensemble:
-        plt.savefig(f'images/ensemble/{category}/combmatr_ensemble.jpg')
+        plt.savefig(f'images/psychologist/ensemble/{category}/combmatr_ensemble.jpg')
     else:
-        plt.savefig(f'images/handcrafted/{category}/combmatr.jpg')
+        plt.savefig(f'images/psychologist/handcrafted/{category}/combmatr.jpg')
 
     return combined_matrix
 
 
-def polarization(percentage_matrix, unique_labels, category, coop=False, ensemble=False):
-    df = pd.DataFrame(percentage_matrix, index=unique_labels, columns=labels)
+def polarization(percentage_matrix, unique_labels, category, task, coop=False, ensemble=False):
+    if task == 'psychologist':
+        df = pd.DataFrame(percentage_matrix, index=unique_labels, columns=labels_psychologist)
 
-    # Create column per categories
-    df['Competence'] = df[competence_categories].sum(axis=1)
-    df['Warmth'] = df[warmth_categories].sum(axis=1)
-    df['Morality'] = df[morality_categories].sum(axis=1)
+        columns = ['Competence', 'Warmth', 'Morality']
+
+        # Create column per categories
+        df['Competence'] = df[competence_categories].sum(axis=1)
+        df['Warmth'] = df[warmth_categories].sum(axis=1)
+        df['Morality'] = df[morality_categories].sum(axis=1)
+    else:
+        df = pd.DataFrame(percentage_matrix, index=unique_labels, columns=labels_jobs)
+
+        columns = ['Engineer', 'Lawyer', 'Nurse']
 
     # Compute mean
-    category_means = df[['Competence', 'Warmth', 'Morality']].mean()
+    category_means = df[columns].mean()
 
     # Compute percentage increase/decrease
-    percentage_increase = ((df[['Competence', 'Warmth', 'Morality']] - category_means) / category_means) * 100
+    percentage_increase = ((df[columns] - category_means) / category_means) * 100
 
     # Barplot
     plt.figure(figsize=(12, 8))
@@ -246,17 +253,18 @@ def polarization(percentage_matrix, unique_labels, category, coop=False, ensembl
     plt.tight_layout()
 
     if coop:
-        plt.savefig(f'images/fairface/{category}/{category}pol_fairface.jpg')
+        plt.savefig(f'images/{task}/soft/{category}/{category}pol_soft.jpg')
     elif ensemble:
-        plt.savefig(f'images/ensemble/{category}/{category}pol_ensemble.jpg')
+        plt.savefig(f'images/{task}/ensemble/{category}/{category}pol_ensemble.jpg')
     else:
-        plt.savefig(f'images/handcrafted/{category}/{category}pol.jpg')
+        plt.savefig(f'images/{task}/handcrafted/{category}/{category}pol.jpg')
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model, preprocess = clip.load(name="ViT-B/32", device=device)
 
-labels = ['Competent', 'Intelligent', 'Skillful', 'Warm', 'Friendly', 'Likeable', 'Honest', 'Sincere', 'Trustworthy']
+labels_psychologist = ['Competent', 'Intelligent', 'Skillful', 'Warm', 'Friendly', 'Likeable', 'Honest', 'Sincere', 'Trustworthy']
+labels_jobs = ['Lawyer', 'Doctor', 'Engineer', 'Nurse', 'Software Developer', 'Teacher']
 
 competence_categories = ['Competent', 'Intelligent', 'Skillful']
 warmth_categories = ['Warm', 'Friendly', 'Likeable']
@@ -266,4 +274,4 @@ dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
 assert os.path.exists(dataset_dir)
 
 fairface = datasets.load_dataset("csv", data_files=f"{dataset_dir}val_labels.csv")['train']
-fairface = fairface.select(range(1000))
+# fairface = fairface.select(range(1000))

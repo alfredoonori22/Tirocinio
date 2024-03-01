@@ -12,11 +12,19 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="ViT-B/32", help="Baseline model for CLIP")
-    parser.add_argument("--category", type=str, default="age", help="Label category: race/gender/age")
+    parser.add_argument("--category", type=str, default="gender", help="Label category: race/gender/age")
+    parser.add_argument("--task", type=str, default="jobs", help="Task category: psychologist/jobs")
     args = parser.parse_args()
 
     fpath = f"/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/{args.category}/vit_b32_-1shots/nctx16_cscFalse_ctpend/seed1/prompt_learner/model.pth.tar-200"
     assert os.path.exists(fpath)
+
+    if args.task == "psychologist":
+        labels = labels_psychologist
+    elif args.task == "jobs":
+        labels = labels_jobs
+    else:
+        raise ValueError("Task must be 'psychologist' or 'jobs'")
 
     prompts, tokenized_prompts = create_prompt(fpath, labels)
 
@@ -37,8 +45,10 @@ if __name__ == "__main__":
     unique_labels = sorted(set(fairface_labels))
 
     # Create the heatmap to visualize the data
-    percentage_matrix = create_Heatmap(unique_labels, labels, counts, args.category, coop=True)
-    combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, args.category, coop=True)
+    percentage_matrix = create_Heatmap(unique_labels, labels, counts, args.category, args.task, coop=True)
+
+    if args.task == "psychologist":
+        combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, args.category, coop=True)
 
     # Calculate polarization
-    polarization(percentage_matrix, unique_labels, args.category, coop=True)
+    polarization(percentage_matrix, unique_labels, args.category, args.task, coop=True)
