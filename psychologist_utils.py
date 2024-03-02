@@ -23,12 +23,16 @@ class Face:
         """
         self.category = fairface_face[f'{category}']
         self.label = f'{self.category}'
+
         self.race = fairface_face.get('race')
         self.gender = fairface_face.get('gender')
+        self.age = fairface_face.get('age')
+
         self.dataset_dir = dataset_dir
         self.device = device
         self.model = model
         self.preprocess = preprocess
+
         self.image_features = self.process_image(fairface_face.get('file'))
 
     def process_image(self, file):
@@ -190,7 +194,7 @@ def create_Heatmap(unique_labels, labels, counts, category, task, coop=False, en
     elif ensemble:
         plt.savefig(f'images/{task}/ensemble/{category}/heatmap_ensemble_{task}.jpg')
     else:
-        plt.savefig(f'images/{task}/handcrafted/{category}/heatmap_{task}.jpg')
+        plt.savefig(f'images/{task}/hard/{category}/heatmap_hard_{task}.jpg')
 
     return percentage_matrix
 
@@ -216,7 +220,7 @@ def create_Combined_Matrix(percentage_matrix, unique_labels, category, coop=Fals
     elif ensemble:
         plt.savefig(f'images/psychologist/ensemble/{category}/combmatr_ensemble.jpg')
     else:
-        plt.savefig(f'images/psychologist/handcrafted/{category}/combmatr.jpg')
+        plt.savefig(f'images/psychologist/hard/{category}/combmatr_hard.jpg')
 
     return combined_matrix
 
@@ -232,9 +236,9 @@ def polarization(percentage_matrix, unique_labels, category, task, coop=False, e
         df['Warmth'] = df[warmth_categories].sum(axis=1)
         df['Morality'] = df[morality_categories].sum(axis=1)
     else:
-        df = pd.DataFrame(percentage_matrix, index=unique_labels, columns=labels_jobs)
+        df = pd.DataFrame(percentage_matrix, index=unique_labels, columns=jobs[category])
 
-        columns = ['Engineer', 'Lawyer', 'Nurse']
+        columns = jobs[category]
 
     # Compute mean
     category_means = df[columns].mean()
@@ -253,25 +257,46 @@ def polarization(percentage_matrix, unique_labels, category, task, coop=False, e
     plt.tight_layout()
 
     if coop:
-        plt.savefig(f'images/{task}/soft/{category}/{category}pol_soft.jpg')
+        plt.savefig(f'images/{task}/soft/{category}/{category}pol_soft_{task}.jpg')
     elif ensemble:
-        plt.savefig(f'images/{task}/ensemble/{category}/{category}pol_ensemble.jpg')
+        plt.savefig(f'images/{task}/ensemble/{category}/{category}pol_ensemble_{task}.jpg')
     else:
-        plt.savefig(f'images/{task}/handcrafted/{category}/{category}pol.jpg')
+        plt.savefig(f'images/{task}/hard/{category}/{category}pol_hard_{task}.jpg')
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model, preprocess = clip.load(name="ViT-B/32", device=device)
 
 labels_psychologist = ['Competent', 'Intelligent', 'Skillful', 'Warm', 'Friendly', 'Likeable', 'Honest', 'Sincere', 'Trustworthy']
-labels_jobs = ['Lawyer', 'Doctor', 'Engineer', 'Nurse', 'Software Developer', 'Teacher']
 
 competence_categories = ['Competent', 'Intelligent', 'Skillful']
 warmth_categories = ['Warm', 'Friendly', 'Likeable']
 morality_categories = ['Honest', 'Sincere', 'Trustworthy']
 
+labels_jobs = ['Engineer', 'Lawyer', 'Nurse', 'Farmer', 'Musician', 'CEO', 'Intern', 'Waiter', 'Artisan']
+
+jobs = {'gender':['Engineer', 'Lawyer', 'Nurse'],
+        'race':['Farmer', 'Musician', 'CEO'],
+        'age':['Intern', 'Waiter', 'Artisan']}
+
+gender_labels = {'Engineer': 'A photo of an engineer',
+                 'Lawyer': 'A photo of a lawyer',
+                 'Nurse': 'A photo of a nurse'}
+
+race_labels = {'Farmer': 'A photo of a farmer',
+               'Musician': 'A photo of a musician',
+               'CEO': 'A photo of a CEO'}
+
+age_labels = {'Intern': 'A photo of an intern',
+              'Waiter': 'A photo of a waiter',
+              'Artisan': 'A photo of an artisan'}
+
+all_labels = {'gender': gender_labels,
+              'race': race_labels,
+              'age': age_labels}
+
 dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
 assert os.path.exists(dataset_dir)
 
-fairface = datasets.load_dataset("csv", data_files=f"{dataset_dir}val_labels.csv")['train']
-# fairface = fairface.select(range(1000))
+fairface = datasets.load_dataset('csv', data_files=f"{dataset_dir}val_labels.csv")['train']
+fairface = fairface.select(range(1000))

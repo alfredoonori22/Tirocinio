@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="ViT-B/32", help="Baseline model for CLIP")
-    parser.add_argument("--category", type=str, default="gender", help="Label category: race/gender/age")
+    parser.add_argument("--category", type=str, default="age", help="Label category: race/gender/age")
     parser.add_argument("--task", type=str, default="jobs", help="Task category: psychologist/jobs")
     args = parser.parse_args()
 
@@ -28,16 +28,16 @@ if __name__ == "__main__":
             'Trustworthy': 'A photo of a trustworthy person'
         }
     elif args.task == "jobs":
-        labels= {
-            'Lawyer': 'A photo of a lawyer',
-            'Doctor': 'A photo of a doctor',
-            'Engineer': 'A photo of an engineer',
-            'Nurse': 'A photo of a nurse',
-            'Software Developer': 'A photo of a software developer',
-            'Teacher': 'A photo of a teacher'
-        }
+        labels = all_labels[args.category]
     else:
         raise ValueError("Task must be 'psychologist' or 'jobs'")
+
+    if args.category == "age":
+        # Definisci i valori di età da escludere
+        ages_to_exclude = ["0-2", "3-9", "10-19", "more than 70"]
+
+        # Filtra il dataset
+        fairface = [item for item in fairface if item['age'] not in ages_to_exclude]
 
     class_labels = list(labels.keys())
     prompts = list(labels.values())
