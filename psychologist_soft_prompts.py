@@ -33,7 +33,7 @@ if __name__ == "__main__":
         # Filtra il dataset
         fairface = [item for item in fairface if item['age'] not in ages_to_exclude]
 
-    prompts, tokenized_prompts = create_prompt(fpath, labels)
+    prompts, tokenized_prompts = create_soft_prompt(fpath, labels)
 
     text_encoder = TextEncoder(model)
 
