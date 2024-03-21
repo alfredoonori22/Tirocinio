@@ -4,9 +4,10 @@ import argparse
 from tqdm import tqdm
 from CoOp.clip import clip
 from collections import Counter
-from psychologist_utils import *
+from utils import *
 from CoOp.trainers.coop import TextEncoder
 from CoOp.clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
+
 
 if __name__ == "__main__":
 
@@ -16,8 +17,7 @@ if __name__ == "__main__":
     parser.add_argument("--task", type=str, default="jobs", help="Task category: psychologist/jobs")
     args = parser.parse_args()
 
-    fpath = f"/homes/aonori/Tirocinio/CoOp/output/fairface/CoOp/{args.category}/vit_b32_-1shots/nctx16_cscFalse_ctpend/seed1/prompt_learner/model.pth.tar-200"
-    assert os.path.exists(fpath)
+    ctxs = []
 
     if args.task == "psychologist":
         labels = labels_psychologist
@@ -33,29 +33,35 @@ if __name__ == "__main__":
         # Filtra il dataset
         fairface = [item for item in fairface if item['age'] not in ages_to_exclude]
 
-    prompts, tokenized_prompts = create_soft_prompt(fpath, labels)
-
+    prompts, tokenized_prompts = create_ensemble_prompts(labels)
     text_encoder = TextEncoder(model)
 
+    text_features = []
     with torch.no_grad():
-        # Build the prompt
-        text_features = text_encoder(prompts, tokenized_prompts)
-        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+        for prompt in prompts:
+            # Build the text encoder
+            text_feature = text_encoder(prompt, tokenized_prompts)
 
-        # Get faces from images in dairface datast, with their label [race-gender]
+            # Normalize the text features
+            text_feature = text_feature / text_feature.norm(dim=-1, keepdim=True)
+
+            text_features.append(text_feature)
+        
+        # Get faces from images in dairface dataset, with their label [race-gender]
         faces = [Face(face, args.category, dataset_dir, device, model, preprocess) for face in tqdm(fairface)]
-        # Run clip with the faces and the different prompt (find the nearest one to the proposed image)
-        fairface_labels, predictions = classify(faces, text_features, labels)
+        
+        # Run clip with the faces and the different prompt (find the nearest one to the proposed image
+        fairface_labels, predictions = ensemble_classify(faces, text_features, labels)
 
     pairs = list(zip(fairface_labels, predictions))
     counts = Counter(pairs)
     unique_labels = sorted(set(fairface_labels))
 
     # Create the heatmap to visualize the data
-    percentage_matrix = create_Heatmap(unique_labels, labels, counts, args.category, args.task, coop=True)
+    percentage_matrix = create_Heatmap(unique_labels, labels, counts, args.category, args.task, ensemble=True)
 
     if args.task == "psychologist":
-        combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, args.category, coop=True)
+        combined_matrix = create_Combined_Matrix(percentage_matrix, unique_labels, args.category, ensemble=True)
 
     # Calculate polarization
-    polarization(percentage_matrix, unique_labels, args.category, args.task, coop=True)
+    polarization(percentage_matrix, unique_labels, args.category, args.task, ensemble=True)

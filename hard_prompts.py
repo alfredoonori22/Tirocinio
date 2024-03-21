@@ -3,7 +3,7 @@ import torch
 import argparse
 from CoOp import clip
 from tqdm import tqdm
-from psychologist_utils import *
+from utils import *
 
 
 if __name__ == "__main__":
