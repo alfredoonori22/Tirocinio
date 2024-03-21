@@ -335,8 +335,13 @@ all_labels = {'gender': gender_labels,
               'race': race_labels,
               'age': age_labels}
 
-dataset_dir = "/work/tesi_aonori/CoOp_datasets/FairFace/"
+dataset_dir = "/work/tesi_aonori/datasets/FairFace/"
+dataset_dir_mod = "/work/tesi_aonori/datasets/FairFace_modified/"
 assert os.path.exists(dataset_dir)
+assert os.path.exists(dataset_dir_mod)
 
 fairface = datasets.load_dataset('csv', data_files=f"{dataset_dir}val_labels.csv")['train']
-fairface = fairface.select(range(1000))
+# fairface = fairface.select(range(1000))
+
+fairface_modified = datasets.load_dataset('csv', data_files=f"{dataset_dir_mod}val_labels.csv")['train']
+# fairface_modified = fairface_modified.select(range(1000))
