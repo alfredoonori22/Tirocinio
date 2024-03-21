@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # custom config
-DATA=/work/tesi_aonori/CoOp_datasets
+DATA=/work/tesi_aonori/datasets
 TRAINER=CoOp
 
 DATASET=fairface
