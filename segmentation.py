@@ -7,16 +7,16 @@ import torchvision.transforms as transforms
 from CoOp import clip
 from PIL import Image, ImageDraw
 from CoOp.trainers.coop import TextEncoder
-from psychologist_utils import model, device, create_soft_prompt, create_ensemble_prompt
+from utils import model, device, create_soft_prompt, create_ensemble_prompts
 from segment_anything import build_sam, sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 
 
 preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
 
 
 @torch.no_grad()
@@ -65,14 +65,14 @@ def segment_image(image, segmentation_mask):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", type=str, default="soft", help="Prompt type: hard/soft/ensemble")
-    parser.add_argument("--category", type=str, default="gender", help="Label category: race/gender/age")
+    parser.add_argument("--category", type=str, default="race", help="Label category: race/gender/age")
     args = parser.parse_args()
 
     first_label = "Doctor" #input("Enter the first label: ")
     second_label = "skilled Doctor" #input("Enter the second label: ")
 
     MODEL_TYPE = "vit_h"
-    sam = sam_model_registry[MODEL_TYPE](checkpoint='/work/tesi_aonori/models/model.pth').to(device=device)
+    sam = sam_model_registry[MODEL_TYPE](checkpoint='/work/tesi_aonori/models/sam_model.pth').to(device=device)
     mask_generator = SamAutomaticMaskGenerator(sam)
 
     image_path = "images/doctors.jpg"
@@ -112,7 +112,24 @@ if __name__ == "__main__":
             text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
     elif args.prompt == "ensemble":
-        prompt = "ensemble"
+        labels = [first_label, second_label]
+        prompts, tokenized_prompts = create_ensemble_prompts(labels)
+        text_encoder = TextEncoder(model)
+
+        text_features = []
+        with torch.no_grad():
+            for prompt in prompts:
+                # Build the text encoder
+                text_feature = text_encoder(prompt, tokenized_prompts)
+
+                # Normalize the text features
+                text_feature = text_feature / text_feature.norm(dim=-1, keepdim=True)
+
+                text_features.append(text_feature)
+
+        # Faccio la media dei tre vettori ottenuti per ciascuna label, ottenendo cosi' un unico tensore (2,512)
+        text_features = torch.stack(text_features).mean(dim=0)
+
     else:
         raise ValueError("Prompt type must be 'hard', 'soft' or 'ensemble'")
 
@@ -150,6 +167,8 @@ if __name__ == "__main__":
         result_image = Image.alpha_composite(original_image.convert('RGBA'), overlay_image)
 
         if args.prompt == 'soft':
-            result_image.save(f'images/segmentation/{args.prompt}/result_{i}_{args.category}.png')
+            result_image.save(f'images/segmentation/{args.prompt}/result_{args.category}_{i}.png')
+        elif args.prompt == 'ensemble':
+            result_image.save(f'images/segmentation/{args.prompt}/result_{i}.png')
         else:
             result_image.save(f'images/segmentation/{args.prompt}/result_{i}.png')
